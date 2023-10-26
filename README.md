@@ -1,4 +1,4 @@
-# Cloud 9 setup
+# Cloud 9 Setup
 - Go to the AWS Management Console, Select Services then select Cloud9  under Developer Tools. From the top-right of the Console, select an available region for this workshop. Once you have selected a region for Cloud9, use the same region for the entirety of this workshop.
 
 - Select Create environment.
@@ -33,7 +33,7 @@ fi
 - sudo yum install jq -y
 
 
-# Deploy the frontend infrastructure
+# Deploy The Frontend Infrastructure
 - Go to the AWS Management Console , click Services then select CodeCommit  under Developer Tools
 - Select Create Repository.
 - Set the Repository name to theme-park-frontend.
@@ -59,7 +59,7 @@ fi
 - git push --set-upstream https://git-codecommit.$AWS_REGION.amazonaws.com/v1/repos/theme-park-frontend main
 
 
-# Deploy the site with AWS amplify
+# Deploy The Site With AWS Amplify
 - Launch Amplify Console .
 - Scroll down to the Get started section, then choose Get Started in the Amplify Hosting panel.
 - Under Host your web app, select AWS CodeCommit and select Continue.
@@ -71,13 +71,13 @@ fi
   ![image](https://github.com/ali0999109/Themepark/assets/145396907/2db7ac2a-0ac3-42d5-83ab-8711445ccf86)
 
 
-# The serverless backend
+# The Serverless Backend
 - A DynamoDB table which you will populate with information about all the rides and attractions throughout the park
 - A Lambda function which performs a table scan on the DynamoDB to return all the items.
 - An API Gateway API creates a public http endpoint for the front-end application to query. This invokes the Lambda function to return a list of rides and attractions.
 
 
-# Step by step instructions 
+# Step By Step Instructions 
 - Go back to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9  under Developer Tools. Make 
  sure your region is correct.
 - Create a deployment bucket in S3 with a unique name. SAM will upload its code to the bucket to deploy your application services. You will also store this bucket name as an 
@@ -126,13 +126,13 @@ echo $DDB_TABLE
   ![image](https://github.com/ali0999109/Themepark/assets/145396907/e7420841-3b54-4358-a69e-2c0a181cadb3)
 
 
-# Populate the dynamo db table
+# Populate The Dynamo Db Table
 - From the Cloud9 console, navigate to the local-app directory in 1-app-deploy: cd ~/environment/theme-park-backend/1-app-deploy/local-app/
 - Install the NPM packages needed: npm install
 - Run the import script: node ./importData.js $AWS_REGION $DDB_TABLE
 
 
-# Test the config
+# Test The Config
 - Confirm that the data is now in the DynamoDB table by running the following command: aws dynamodb scan --table-name $DDB_TABLE
 - Call the API Gateway endpoint URL which SAM has created. First, run the following command in the console to show the endpoint URL: aws cloudformation describe-stacks --stack-name 
   theme-park-backend --query "Stacks[0].Outputs[?OutputKey=='InitStateApi'].OutputValue" --output text
@@ -141,10 +141,33 @@ echo $DDB_TABLE
 - This opens another browser tab and returns all the raw ride and attraction data from the DynamoDB table via API Gateway and Lambda. You have now created a public API that your 
   frontend application can use to populate the map with points of interest.
 
+# Update The Frontend
+- In this section, you will add the API endpoint you have created to the frontend configuration. This allows the frontend application to get the list of rides and attractions via the 
+ APIGateway URL which pulls the information from DynamoDB.
 
-- 
+- In the Cloud9 terminal, in the left directory panel navigate to theme-park-frontend/src.
+- Locate the config.js file and double-click to open in the editor.
+- In the MODULE 1 section at the beginning of the file, update the initStateAPI attribute of the API by pasting the API Endpoint URL from the previous section between the two '.
+- Save the file.
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/ebe4f308-3f87-4785-8346-dad9ac8b5faa)
+# Push To CodeCommit And Deploy Via Amplify Consol
 
--
+- In the Cloud9 terminal, change to the front-end directory with the following command: cd ~/environment/theme-park-frontend/
+- Commit to CodeCommit by executing the following commands:
+- git commit -am "Module 1"
+- git push
+- After the commit is completed, go to the Amplify Console . Make sure you are in the correct region.
+- In the All apps section, click theme-park-frontend. If you are going back to a previously open browser tab, you may need to refresh.
+ You will see a new build has automatically started as a result of the new commit in the underlying code repo. This build will take a few minutes. Once complete
+
+# Module Review
+- Connected your backend application with the Flow & Traffic Controller's SNS topic.
+- Created a Lambda function that was invoked by the SNS topic whenever a new message is published.
+- Published the message to the IoT topic for the front end.
+- Updated the front end with the configuration information so it can listen to new messages on the IoT topic.
+
+
+
 
 
 
