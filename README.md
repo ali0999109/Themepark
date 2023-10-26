@@ -438,7 +438,8 @@ Enter the two environment variables names along with the values you retrieved in
 
 - Open the published application URL in a browser.
 
-- Click on one of the ride profiles to open the ride description page. You can see a new button has appeared - "Add ride photo".
+ ![image](https://github.com/ali0999109/Themepark/assets/145396907/7e550fb9-2b3b-4f98-b800-c425d6784b88)
+
 
   
 
