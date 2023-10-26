@@ -166,6 +166,71 @@ echo $DDB_TABLE
 - Published the message to the IoT topic for the front end.
 - Updated the front end with the configuration information so it can listen to new messages on the IoT topic.
 
+# On-ride photo processing
+- This module shows how to use a Lambda function to perform a chroma key operation on user-generated images. It explains how the work is processed asynchronously and shows how to alert 
+  the frontend when the image is ready.
+
+# How It Works
+- The front-end calls an API endpoint to get a presigned URL to upload the photo to S3. This enables the front-end application to upload directly to S3 without a webserver. This 
+  results in a new JPG object in the S3 Upload bucket.
+- When a new object is written to the Upload bucket, this invokes the first Lambda function in the sequence, which uses a process called Chromakey to remove the green screen background 
+  from the image. The resulting image is written to the Processing bucket.
+- When a new object is written to the Processing bucket, this invokes the next Lambda function which composites the image with a new background and theme park logo. This resulting 
+  image is written into the Final bucket.
+- Lastly, when a new object is written to the Final bucket, this invokes the final Lambda function which sends a notification to IoT core that the file is ready. This notifies the 
+  front-end application via the IoT topic notifications.
+
+- The serverless backend
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/570f5e28-bd9e-4717-aef2-1572a8d7030a)
+
+- The image is uploaded by the front-end into the Upload Bucket.
+- A chromakey process removes the background and saves the object into the Processing Bucket.
+- A compositing process creates a final image that is saved into the Final Bucket.
+- A message is sent to IoT Core to notify the front-end that the file is now ready.
+
+# Set up environment variablesHeader anchor link
+- Run the following commands in the Cloud9 terminal to set environment variables used in this workshop:
+- AWS_REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/\(.*\)[a-z]/\1/')
+FINAL_BUCKET=$(aws cloudformation describe-stack-resource --stack-name theme-park-backend --logical-resource-id FinalBucket --query "StackResourceDetail.PhysicalResourceId" --output text)
+UPLOAD_BUCKET=$(aws cloudformation describe-stack-resource --stack-name theme-park-backend --logical-resource-id UploadBucket --query "StackResourceDetail.PhysicalResourceId" --output text)
+accountId=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId)
+s3_deploy_bucket="theme-park-sam-deploys-${accountId}"
+
+
+
+
+  # Creating the OpenCV Lambda 
+- Go back to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9  under Developer Tools. Make 
+  sure your region is correct.
+- In the terminal enter the following command to download the code for the layer:
+- mkdir ~/environment/lambda-layer
+- cd ~/environment/lambda-layer
+- wget https://innovator-island.s3-us-west-2.amazonaws.com/opencv-python-311.zip
+- Upload the zipped code package to your S3 deployment bucket: aws s3 cp opencv-python-311.zip s3://$s3_deploy_bucket
+- Create the Lambda layer: aws lambda publish-layer-version --layer-name python-opencv-311 --description "OpenCV for Python 3.11" --content S3Bucket=$s3_deploy_bucket,S3Key=opencv- 
+  python-311.zip --compatible-runtimes python3.11
+- After a few seconds, the JSON response in the terminal confirms the LayerArn and Version of the new layer.
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/99978c7b-af76-45c0-97a4-c9a93d92e301)
+
+
+# Creating the Chromakey Lambda function
+- Go to the Lambda console - from the AWS Management Console, select Services then select Lambda  under Compute. Make sure your region is correct.
+- Select Create function:
+- Enter theme-park-photos-chromakey for Function name.
+- Ensure Python 3.11 is selected under Runtime.
+- For Architecture, select x86_64.
+
+
+
+
+
+
+
+
+
+
+
+ 
 
 
 
