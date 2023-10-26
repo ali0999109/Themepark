@@ -219,6 +219,257 @@ s3_deploy_bucket="theme-park-sam-deploys-${accountId}"
 - Enter theme-park-photos-chromakey for Function name.
 - Ensure Python 3.11 is selected under Runtime.
 - For Architecture, select x86_64.
+- Open the Change default execution role section:
+- Select the Use an existing role radio button.
+- Click the Existing role drop-down, and enter ThemeParkLambdaRole until the filter matches a single available role beginning with theme-park-backend-ThemeParkLambdaRole*.
+- Select this role.
+- Choose Create function.
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/738e2d87-7f98-473f-bb96-356ff5680b10)
+
+- In the Function overview panel, select + Add Trigger:
+- In the Trigger configuration dropdown, select S3.
+- In the Bucket dropdown, select the bucket name beginning with theme-park-backend-uploadbucket.
+- For Event Type select All object create events from the dropdown.
+- Read the Recursive invocation warning, and select the checkbox to confirm that you have read and understood the warning.
+- Choose Add.
+
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/3cff2fd4-8723-4b4a-bf1c-0f65fbccb15f)
+
+
+- Back on the Lambda function page, select the Code tab. Scroll down to the Layers card. Select Add a layer.
+ ![image](https://github.com/ali0999109/Themepark/assets/145396907/41ae7272-1bf6-492e-a099-46ab1fa5600f)
+
+- On the Add layer page:
+- Select the Custom layers radio button.
+- In the Custom layers dropdown, choose python-opencv-311.
+- In the Version dropdown, choose 1.
+- Select Add.
+- Back on the Lambda function page, select the Code tab to view the Code source card
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/b4524960-0bad-4d55-8b8c-730ed6c323d3)
+
+- Copy the code from the file in Cloud9 by navigating to 3-photos/1-chromakey/app.py onto the clipboard and paste into the lambda_function.py tab in the Lambda function:
+  
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/4f6c3a68-ec88-493c-98d3-c274d5808fc5)
+
+- Select Deploy in the Code source card to save the changes.
+
+# Adding environment variables
+
+- This function uses three environment variables:
+
+- OUTPUT_BUCKET_NAME: the name of the bucket where the output object is stored.
+- HSV_LOWER: A tuple representing lower HSV value for the green screen chroma key matching process.
+- HSV_UPPER: A tuple representing upper HSV value for the green screen chroma key matching process.
+- In this section, you will retrieve and configure these Environment Variables for the function.
+
+- Go back to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9  under Developer Tools. Make 
+ sure your region is correct.
+
+- In the terminal enter the following command to retrieve the value for OUTPUT_BUCKET_NAME:
+
+- aws s3 ls | grep theme-park-backend-processingbucket
+
+- Go back to the browser tab with the theme-park-photos-chromakey Lambda function open. Select the Configuration tab, then choose the Environment variables menu item on the left. 
+  Choose Edit.
+
+- Enter the three environment variables with the three values, as follows:
+
+- OUTPUT_BUCKET_NAME: the value from step 2 above.
+- HSV_LOWER: [36, 100, 100]
+- HSV_UPPER: [75 ,255, 255]
+
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/f88772b5-0d29-45f1-900d-e2912a04af2b)
+
+
+- In the browser tab with the theme-park-photos-chromakey Lambda function open, select the Configuration tab. Choose the General configuration option in the menu on the left.
+  
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/43969613-e091-4b7d-bfa2-1271124e501a)
+
+- Choose Edit. Change the Memory (MB) value to 3008 MB. Change the Timeout values to 0 min and 10 sec.
+
+- The chroma key process uses memory-intensive libraries to complete the graphics processing. By allocating the more memory, in this case 3008 MB or 3 GB, this function will complete 
+  processing more quickly.
+
+- Select Save to update the function.
+
+
+
+# Creating the photo compositing Lambda function
+- Go to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9  under Developer Tools. Make sure 
+  your region is correct.
+
+- In the Cloud9 file explorer panel, navigate to and open theme-park-backend/3-photos/2-compositing/template.yaml to review its contents.
+
+- SAM will read this file and convert this YAML into infrastructure. Some of the important sections for today include:
+
+- Parameters: the function needs to know the name of the final bucket, so you can provide this as a parameter to the template.
+ Globals: any settings here will apply across the entire template.
+ Resources: defines the AWS resources to create.
+ Within the Resources section:
+
+- The template defines a single Lambda function called CompositeFunction.
+ It specifies the runtime, memory size and where the code can be located (in the lambdaFunction directory).
+ It defines an environment variable, which uses the FinalBucketName parameter as an input.
+ It provides the IAM policy to enable access for the function to S3.
+
+
+# Create the Lambda function using SAM
+- Change directory: cd ~/environment/theme-park-backend/3-photos/2-compositing
+- You can see the name of the final S3 bucket using the following command which has been already stored as an environment variable $FINAL_BUCKET. SAM will be configured to use this S3 
+  bucket name to set the environment variable within the Lambda function.
+- aws s3 ls | grep finalbucket
+- In the terminal, execute the following SAM CLI commands which will build the SAM application, package the code with the same SAM S3 deployment bucket previously used and then deploy 
+ the application specifying the S3 Final Bucket name for the Lambda function to use:
+- sam build
+
+- sam package --output-template-file packaged.yaml --s3-bucket $s3_deploy_bucket
+
+- sam deploy --template-file packaged.yaml --stack-name theme-park-photos --capabilities CAPABILITY_IAM --parameter-overrides "FinalBucketName"=$FINAL_BUCKET
+
+- This will take a few minutes to deploy - wait for the confirmation message in the console before continuing.
+
+- This will take a few minutes to deploy - wait for the confirmation message in the console before continuing.
+
+# Adding the S3 trigger
+
+- Now you have created the Lambda function, you need to configure how it is invoked. This compositing function needs to execute when a new object is put into the processingbucket. In 
+  this section, you will create this trigger.
+
+
+- Go to the Lambda console - from the AWS Management Console, select Services then select Lambda  under Compute. Make sure your region is correct.
+
+- Select the function with the name theme-park-photos-CompositeFunction-XXXXXXXXX.
+
+- Select + Add Trigger:
+
+- In the Trigger configuration dropdown, Select S3.
+- In the Bucket dropdown, select the bucket name beginning with theme-park-backend-processingbucket.
+- For Event Type select All object create events from the dropdown.
+- Check the Recursive invocation acknowledgement, and select Add.
+
+# Creating the post-processing Lambda function
+- Go to the Lambda console - from the AWS Management Console, select Services then select Lambda  under Compute. Make sure your region is correct.
+
+- Select Create function:
+
+- Ensure Author from scratch is selected.
+- Enter theme-park-photos-postprocess for Function name.
+- Ensure Node.js 18.x is selected under Runtime.
+- For Architecture, choose arm64.
+
+- Open the Change default execution role section:
+  Select the Use an existing role radio button.
+  Click the Existing role drop-down, and enter ThemeParkLambdaRole until the filter matches a single available role beginning with theme-park-backend-ThemeParkLambdaRole*.
+  Select this role.
+  Select Create function.
+
+
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/7d51cdbf-14c3-47da-bbe6-b50664d5d32c)
+
+
+
+- Select + Add trigger:
+- In the Trigger configuration dropdown, select S3.
+- In the Bucket dropdown, select the bucket name beginning with theme-park-backend-finalbucket.
+- For Event Type select All object create events from the dropdown.
+- Check the Recursive invocation acknowledgement, and select Add.
+- Back in the Lambda function page, select the Code tab to view the Code source card.
+- The console creates a Lambda function with a single source file named index.js or index.mjs. Make sure yours is named index.js by renaming it. For more information, check out 
+  Building Lambda functions with Node.js .]
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/e473f996-ef9c-4cb9-ad68-0320ed512654)
+
+
+- Go back to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9  under Developer Tools. Make sure your region is correct.
+
+- Copy the code from 3-postprocess/app.js onto the clipboard and paste into the index.js tab in the Lambda function, overwriting the existing content:
+
+- Select Deploy in the Function Code panel to save the changes and deploy the function.
+
+# Adding Environment Variables
+
+- Go back to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9  under Developer Tools. Make sure your region is correct.
+
+- In the terminal enter the following command to retrieve the value for IOT_DATA_ENDPOINT: aws iot describe-endpoint --endpoint-type iot:Data-ATS
+
+- Next, enter the following command to retrieve the value for DDB_TABLE_NAME: aws dynamodb list-tables | grep backend
+
+- Next, enter the following command to retrieve the value for WEB_APP_DOMAIN: aws cloudformation describe-stacks --stack-name theme-park-backend --query "Stacks[0].Outputs[?OutputKey=='WebAppDomain'].OutputValue" --output text
+
+- Go back to the browser tab with the theme-park-photos-postprocess Lambda function open. Select the Configuration tab, then select Environment variables from the menu. Choose Edit.
+Enter the two environment variables names along with the values you retrieved in Cloud9 (without quotes):
+
+![image](https://github.com/ali0999109/Themepark/assets/145396907/1f3f0ea1-d7c7-4669-b236-360dce62592a)
+
+
+# update the frontend
+- In this section, you will update the frontend with the API endpoint where it can request photo uploads. You will then commit the change to CodeCommit, which will cause the frontend to be republished.
+
+- Go back to your browser tab with Cloud9 running. If you need to re-launch Cloud9, from the AWS Management Console, select Services then select Cloud9 under Developer Tools. Make sure your region is correct.
+
+- In the terminal, run this command to show the uploads API from when the backend was deployed in module 1: aws cloudformation describe-stacks --stack-name theme-park-backend --query "Stacks[0].Outputs[?OutputKey=='UploadApi'].OutputValue" --output text
+
+- Copy the output URL to the clipboard:
+
+- In the Cloud9 terminal, in the left directory panel navigate to theme-park-frontend/src.
+
+- Locate the config.js file and double-click to open in the editor.
+
+- This file contains a JSON configuration for the frontend. The file is separated into modules that correspond with the modules in this workshop.
+
+- In the MODULE 3 section, between the single quote marks '', update the photoUploadURL with the API Endpoint URL in the clipboard.
+
+- Save the file.
+
+  ![image](https://github.com/ali0999109/Themepark/assets/145396907/7dd84e0b-88e5-4c77-9860-b8ffaabc8f92)
+
+
+# Push to CodeCommit and deploy via Amplify
+
+- In the Cloud9 terminal, change to the front-end directory with the following command: cd ~/environment/theme-park-frontend/
+
+- Commit to CodeCommit by executing the following commands:
+- git commit -am "Module 3 - Photo compositing"
+- git push
+
+- After the commit is completed, go to the Amplify Console .
+
+- In the All apps section, click theme-park-frontend. You will see a new build has automatically started as a result of the new commit in the underlying code repo. This build will take 
+  a few minutes until the Deploy stage is complete
+
+- Open the published application URL in a browser.
+
+- Click on one of the ride profiles to open the ride description page. You can see a new button has appeared - "Add ride photo".
+
+  
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
